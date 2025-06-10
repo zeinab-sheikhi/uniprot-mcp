@@ -6,17 +6,17 @@ import logging
 import os
 import random
 from io import StringIO
-from typing import Any, Dict, Literal, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Literal, Tuple, Type, TypeVar, Union
 
 import httpx
 from diskcache import Cache
 from platformdirs import user_cache_dir
 from pydantic import BaseModel
 
-from .settings import settings
+from uniprot_mcp.settings import settings
 
 logger = logging.getLogger(__name__)
-_cache: Optional[Cache] = None
+_cache: Cache | None = None
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -43,7 +43,7 @@ def get_cache() -> Cache:
 def generate_cache_key(
     method: str,
     url: str,
-    params: Optional[Dict[str, Any]] = None,
+    params: Dict[str, Any] | None = None,
 ) -> str:
     """Generate a cache key for a given HTTP request."""
     sha256_hash = hashlib.sha256()
@@ -54,7 +54,7 @@ def generate_cache_key(
     return sha256_hash.hexdigest()
 
 
-def get_cache_response(cache_key: str) -> Optional[str]:
+def get_cache_response(cache_key: str) -> str | None:
     """Retrieve the cache response if avialable."""
     return get_cache().get(cache_key)
 
@@ -70,11 +70,11 @@ def cache_response(cache_key: str, content: str, cache_ttl: int) -> None:
 async def call_http(
     method: str,
     url: str,
-    params: Optional[Dict[str, Any]] = None,
-    timeout: Optional[int] = None,
+    params: Dict[str, Any] | None = None,
+    timeout: int | None = None,
     retries: int = 3,
     backoff_factor: float = 0.5,
-    rate_limit_delay: Optional[float] = None,
+    rate_limit_delay: float | None = None,
 ) -> Tuple[int, str]:
     """Perform an HTTP request(GET/POST) with retries and optional rate limit."""
     timeout = timeout or settings.REQUEST_TIMEOUT
@@ -82,7 +82,7 @@ async def call_http(
     if rate_limit_delay:
         await asyncio.sleep(rate_limit_delay)
 
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
             async with httpx.AsyncClient(
@@ -118,17 +118,17 @@ async def call_http(
 # --------------------------------
 async def request_api(
     url: str,
-    request: Optional[Union[BaseModel, Dict]] = None,
-    response_model_type: Optional[Type[T]] = None,
+    request: Union[BaseModel, Dict] | None = None,
+    response_model_type: Type[T] | None = None,
     method: Literal["GET", "POST"] = "GET",
-    cache_ttl: Optional[int] = None,
+    cache_ttl: int | None = None,
     retries: int = 3,
-    rate_limit_delay: Optional[float] = None,
-) -> Tuple[Optional[T], Optional[RequestError]]:
+    rate_limit_delay: float | None = None,
+) -> Tuple[T | None, RequestError | None]:
     """Main method for API request with cache, retry, and parsing."""
 
     cache_ttl = cache_ttl or settings.CACHE_TTL
-    params: Optional[Dict[str, Any]] = None
+    params: Dict[str, Any] | None = None
 
     # Build request params
     if request is not None:
@@ -176,8 +176,8 @@ async def request_api(
 def parse_response(
     status_code: int,
     content: str,
-    response_model_type: Optional[Type[T]] = None,
-) -> Tuple[Optional[T], Optional[RequestError]]:
+    response_model_type: Type[T] | None = None,
+) -> Tuple[T | None, RequestError | None]:
     """Parse the HTTP response based on the content type."""
     if status_code != 200:
         return None, RequestError(code=status_code, message=content)
@@ -191,8 +191,13 @@ def parse_response(
             else:
                 response_dict = {"text": content}
             return response_dict, None
-        return response_model_type.model_validate_json(content), None
+        
+        parsed: T = response_model_type.model_validate_json(content)
+        return parsed, None
 
     except Exception as e:
-        logger.exception("Error parsing HTTP response")
-        return None, RequestError(code=500, message=str(e))
+        logger.error("Error parsing HTTP response")
+        return None, RequestError(
+            code=500,
+            message=f"Failed to parse response: {str(e)}",
+        )

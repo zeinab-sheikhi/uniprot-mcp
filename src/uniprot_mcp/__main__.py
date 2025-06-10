@@ -2,7 +2,7 @@
 
 import sys
 
-from mcp_uniprot.cli import app  # type: ignore
+from uniprot_mcp.cli import app
 
 
 def main():
