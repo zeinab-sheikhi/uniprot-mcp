@@ -41,3 +41,104 @@ dev-dependencies = [
     "mkdocs-material>=8.5.10",
     "mkdocstrings[python]>=0.26.1",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+mcp-uniprot = "uniprot_mcp.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uniprot_mcp"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+fix = true
+unsafe-fixes = true
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+[tool.ruff.lint]
+select = [
+    "F",  # flake8 rules
+    "E",  # pydocstyle error rules
+    "W",  # pydocstyle warning rules
+    "B",  # flake8-bugbear rules
+    "I",  # isort rules
+]
+ignore = [
+    "E501",  # line-too-long
+    "F841",  # Unused variable
+]
+
+[tool.ruff.format]
+preview = true
+indent-style = "space"
+quote-style = "double"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"__init__.py" = ["I001"]
+
+# [tool.ruff.lint.isort]
+# known-first-party = ["mcp_alphafold"]
+# lines-after-imports = 2
+
+[tool.mypy]
+files = ["src"]
+ignore_missing_imports = true
+disallow_untyped_defs = false
+disallow_any_unimported = false
+no_implicit_optional = true
+check_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = true
+show_error_codes = true
+disable_error_code = [
+    "union-attr",
+    "prop-decorator",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=mcp_alphafold --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.coverage.run]
+source = ["mcp_alphafold"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
+
