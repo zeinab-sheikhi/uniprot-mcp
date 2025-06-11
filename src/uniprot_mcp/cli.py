@@ -1,38 +1,45 @@
-import asyncio
-import json
 import logging
-from pathlib import Path
+import sys
+from typing import cast
+
+import typer
+
+from uniprot_mcp.server import UniprotMCP
+from uniprot_mcp.settings import settings
 
 
-from uniprot_mcp.tools.search_uniprot import search_uniprot
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logger = logging.getLogger(__name__)
+app = typer.Typer()
 
 
-async def main():
-    """
-    Main function to run a test search against the UniProt API.
-    """
-    query = "insulin"
-    output_filename = "uniprot_insulin_results.json"
-    output_path = Path(output_filename)
-
-    print(f"--> Searching UniProt with query: '{query}'")
-
+@app.command()
+def run(
+    server_name: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    transport: str | None = typer.Option(
+        None,
+        help="Transport mode for MCP server; can be 'stdio' or 'streamable-http'",
+    ),
+) -> None:
+    """Run the MCP server."""
     try:
-        # Call the async search function
-        results_json_str = await search_uniprot(query=query, size=1)        
-        parsed_data = json.loads(results_json_str)
+        server = UniprotMCP(name=server_name or settings.SERVER_NAME)
+        transport = transport or settings.TRANSPORT
 
-        with output_path.open("w", encoding="utf-8") as f:
-            json.dump(parsed_data, f, indent=2, ensure_ascii=False)
-
+        if transport == "stdio":
+            server.run(transport=transport)
+        elif transport == "streamable-http":
+            server.run(
+                transport=cast(str, transport),
+                host=host or settings.SERVER_HOST,
+                port=port or settings.SERVER_PORT,
+            )
+        else:
+            raise typer.BadParameter(f"Invalid transport: {transport}")
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}", exc_info=True)
+        logger.error(f"Error running MCP server from typer app: {e}")
+        sys.exit(1)
 
 
-if __name__ == "__main__":
-    # In Python 3.7+, asyncio.run() is the standard way to run an async main function.
-    asyncio.run(main())
+__all__ = ["app"]

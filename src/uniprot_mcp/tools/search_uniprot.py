@@ -11,16 +11,32 @@ logger = logging.getLogger(__name__)
 
 async def search_uniprot(
     query: str,
-    fields: List[str] | None = None,
-    sort: str | None = None,
-    include_isoform: bool | None = None,
+    fields: List[str] | None = "accession",
     size: int | None = 1,
+    include_isoform: bool | None = None,
+    sort: str | None = None,
 ) -> str:
     """
     Search UniProtKB for protein entries matching the specified query and parameters.
 
     Args:
-        query: Search criteria for UniProtKB entries.
+        query (str): A search query string to find proteins. The query must
+                     follow UniProt's advanced search syntax. Key rules are:
+                     - Fields are specified with `field_name:value`.
+                     - Terms can be combined with logical operators: `AND`, `OR`, `NOT`.
+                     - Parentheses `()` should be used to group terms.
+                     - For a full list of available search fields, see the UniProt documentation.
+
+                     **Query Examples**:
+                     - To find human insulin:
+                       "(protein_name:insulin) AND (organism_name:human)"
+                     - To find a specific protein by its accession number:
+                       "accession:P01308"
+                     - To find proteins that are part of the human proteome but are NOT enzymes:
+                       "(proteome:UP000005640) NOT (ec:*) "
+                     - To find proteins related to either "kinase" or "phosphatase" in yeast:
+                       "(organism_name:yeast) AND ((cc_function:kinase) OR (cc_function:phosphatase))"
+
         fields: Optional list of fields to include in the response.
         sort: Optional sort order for results.
         include_isoform: Whether to include isoform data.
